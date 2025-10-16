@@ -18,10 +18,9 @@ import express from "express";
 import cron from "node-cron";
 
 // ======== CONFIGURACIÓN ========
-const TOKEN =
-  "MTQyNTcxOTgwMDI5Nzk1MTI1Mg.GYdprt.h7gDu5n-2ISU05u3WInL6CUCjctwS3IpvVi8QM";
-const CLIENT_ID = "1425719800297951252";
-const GUILD_ID = "1409967956808437822";
+const TOKEN = process.env.DISCORD_BOT_TOKEN;
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "1425719800297951252";
+const GUILD_ID = process.env.DISCORD_GUILD_ID || "1409967956808437822";
 
 const FINANZAS_ROLE_ID = "1411022714684182598";
 const TICKET_CHANNEL_ID = "1425689943648501832";
@@ -35,8 +34,8 @@ const CONTRATACION_CHANNEL_ID = "1427368777095450775"; // 👈 NUEVO canal de #t
 // ======== SERVIDOR KEEP-ALIVE ========
 const app = express();
 app.get("/", (req, res) => res.send("✅ Bot Technolókia activo 24/7"));
-app.listen(3000, () =>
-  console.log("🌐 Servidor web keep-alive corriendo en puerto 3000")
+app.listen(5000, () =>
+  console.log("🌐 Servidor web keep-alive corriendo en puerto 5000")
 );
 
 // ======== VARIABLES DE ESTADO ========
@@ -273,14 +272,25 @@ const commands = [
     .setDescription("Mostrar el balance semanal"),
 ].map((c) => c.toJSON());
 
-const rest = new REST({ version: "10" }).setToken(TOKEN);
-await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
-  body: commands,
-});
+if (!TOKEN) {
+  console.error("❌ Error: DISCORD_BOT_TOKEN no está configurado en las variables de entorno");
+  process.exit(1);
+}
 
 // ======== AL INICIAR EL BOT ========
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
+
+  const rest = new REST({ version: "10" }).setToken(TOKEN);
+  
+  try {
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
+      body: commands,
+    });
+    console.log("✅ Comandos registrados correctamente");
+  } catch (error) {
+    console.error("❌ Error al registrar comandos:", error);
+  }
 
   // === Embed de Pre-Ticket ===
   const canalTicket = await client.channels.fetch(CREAR_TICKET_CHANNEL_ID);
@@ -471,11 +481,25 @@ client.on("interactionCreate", async (interaction) => {
     return;
   }
 
-  // === FINANZAS ===
   if (interaction.isChatInputCommand()) {
     const fechaUnix = Math.floor(Date.now() / 1000);
 
+    const hasRole = (roleId) => {
+      if (!interaction.member) return false;
+      if (Array.isArray(interaction.member.roles)) {
+        return interaction.member.roles.includes(roleId);
+      }
+      return interaction.member.roles.cache.has(roleId);
+    };
+
     if (interaction.commandName === "ingreso") {
+      if (!hasRole(FINANZAS_ROLE_ID)) {
+        return interaction.reply({
+          content: "❌ Solo Finanzas puede usar este comando.",
+          ephemeral: true,
+        });
+      }
+
       const monto = interaction.options.getNumber("monto");
       const obs = interaction.options.getString("observacion");
       movimientos.push({ tipo: "Ingreso", monto, obs, fechaUnix });
@@ -485,9 +509,8 @@ client.on("interactionCreate", async (interaction) => {
         ephemeral: true,
       });
     }
-    // === SUELDO ===
     if (interaction.commandName === "sueldo") {
-      if (!interaction.member.roles.cache.has(FINANZAS_ROLE_ID)) {
+      if (!hasRole(FINANZAS_ROLE_ID)) {
         return interaction.reply({
           content: "❌ Solo Finanzas puede usar este comando.",
           ephemeral: true,
@@ -634,6 +657,13 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (interaction.commandName === "gasto") {
+      if (!hasRole(FINANZAS_ROLE_ID)) {
+        return interaction.reply({
+          content: "❌ Solo Finanzas puede usar este comando.",
+          ephemeral: true,
+        });
+      }
+
       const monto = interaction.options.getNumber("monto");
       const obs = interaction.options.getString("observacion");
       movimientos.push({ tipo: "Gasto", monto, obs, fechaUnix });
@@ -644,8 +674,14 @@ client.on("interactionCreate", async (interaction) => {
       });
     }
 
-    // === BALANCE DETALLADO ===
     if (interaction.commandName === "balance") {
+      if (!hasRole(FINANZAS_ROLE_ID)) {
+        return interaction.reply({
+          content: "❌ Solo Finanzas puede usar este comando.",
+          ephemeral: true,
+        });
+      }
+
       const ingresos = movimientos.filter((m) => m.tipo === "Ingreso");
       const gastos = movimientos.filter((m) => m.tipo === "Gasto");
       const totalI = ingresos.reduce((a, b) => a + b.monto, 0);
@@ -681,6 +717,101 @@ client.on("interactionCreate", async (interaction) => {
 
       await interaction.reply({ embeds: [embed] });
     }
+
+    if (interaction.commandName === "ticket") {
+      if (!hasRole(SERVICIO_TECNICO_ROLE_ID)) {
+        return interaction.reply({
+          content: "❌ Solo Servicio Técnico puede usar este comando.",
+          ephemeral: true,
+        });
+      }
+
+      const cliente = interaction.options.getString("cliente");
+      const codPlan = interaction.options.getString("cod-plan");
+      const grado = interaction.options.getString("grado");
+      const contacto = interaction.options.getString("contacto");
+      const tecnico = interaction.options.getString("tecnico");
+      const problema = interaction.options.getString("problema");
+
+      const ticketID = `TEC-${String(ticketCounter).padStart(4, "0")}`;
+      ticketCounter++;
+      fs.writeFileSync(COUNTER_FILE, ticketCounter.toString());
+
+      ticketsData[ticketID] = {
+        cliente,
+        codPlan,
+        grado,
+        contacto,
+        tecnico,
+        problema,
+        fechaUnix,
+      };
+      fs.writeFileSync("tickets.json", JSON.stringify(ticketsData, null, 2));
+
+      const embed = new EmbedBuilder()
+        .setColor(0x00aeff)
+        .setTitle(`🎫 Ticket #${ticketID}`)
+        .addFields(
+          { name: "🏢 Cliente", value: cliente },
+          { name: "📋 Plan", value: codPlan },
+          { name: "🔴 Grado", value: grado },
+          { name: "📞 Contacto", value: contacto },
+          { name: "👨‍🔧 Técnico", value: tecnico },
+          { name: "⚙️ Problema", value: problema },
+          { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
+        )
+        .setFooter({ text: "Technolókia SRL — Sistema de Tickets" });
+
+      const canal = await client.channels.fetch(TICKET_CHANNEL_ID);
+      await canal.send({ embeds: [embed] });
+
+      await interaction.reply({
+        content: `✅ Ticket **${ticketID}** creado correctamente.`,
+        ephemeral: true,
+      });
+    }
+
+    if (interaction.commandName === "reporte") {
+      if (!hasRole(SERVICIO_TECNICO_ROLE_ID)) {
+        return interaction.reply({
+          content: "❌ Solo Servicio Técnico puede usar este comando.",
+          ephemeral: true,
+        });
+      }
+
+      const codTicket = interaction.options.getString("cod-ticket");
+      const tecnico = interaction.options.getString("tecnico");
+      const obs = interaction.options.getString("observaciones-adicionales");
+
+      if (!ticketsData[codTicket]) {
+        return interaction.reply({
+          content: `❌ El ticket **${codTicket}** no existe.`,
+          ephemeral: true,
+        });
+      }
+
+      if (!visitas[codTicket]) visitas[codTicket] = [];
+      visitas[codTicket].push({ tecnico, obs, fechaUnix });
+      fs.writeFileSync("visitas.json", JSON.stringify(visitas, null, 2));
+
+      const embed = new EmbedBuilder()
+        .setColor(0xff9900)
+        .setTitle(`📝 Reporte Técnico — Ticket ${codTicket}`)
+        .addFields(
+          { name: "👨‍🔧 Técnico", value: tecnico },
+          { name: "📋 Observaciones", value: obs },
+          { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
+        )
+        .setFooter({ text: "Technolókia SRL — Reportes" });
+
+      const canal = await client.channels.fetch(REPORTE_CHANNEL_ID);
+      await canal.send({ embeds: [embed] });
+
+      await interaction.reply({
+        content: `✅ Reporte registrado para **${codTicket}**.`,
+        ephemeral: true,
+      });
+    }
   }
 });
 
@@ -706,6 +837,9 @@ cron.schedule("0 10 * * 3", async () => {
 
   await channel.send({ embeds: [embed] });
 
+  const archiveFile = `movimientos_${new Date().toISOString().split('T')[0]}.json`;
+  fs.writeFileSync(archiveFile, JSON.stringify(movimientos, null, 2));
+  
   movimientos = [];
   fs.writeFileSync(MOVIMIENTOS_FILE, JSON.stringify(movimientos));
 });
