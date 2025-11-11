@@ -18,7 +18,6 @@ import fs from "fs";
 import express from "express";
 import cron from "node-cron";
 import cors from "cors";
-import fs from "fs";
 
 let solicitudes = {};
 if (fs.existsSync("solicitudes.json")) {
