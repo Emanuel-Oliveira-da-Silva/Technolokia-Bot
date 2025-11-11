@@ -118,6 +118,7 @@ app.use(express.json());
 app.use(cors({
   origin: ["https://technolokia.up.railway.app", "*"],
   methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"]
 }));
 
 
