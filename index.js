@@ -86,13 +86,11 @@ app.post("/api/nueva-solicitud-plan", express.json(), async (req, res) => {
     fs.writeFileSync("solicitudes.json", JSON.stringify(solicitudes, null, 2));
 
     return res.json({ success: true });
-
   } catch (err) {
     console.error("❌ Error procesando la solicitud:", err);
     return res.status(500).json({ success: false, message: "Error interno" });
   }
 });
-
 
 // ✅ Para solicitudes de soporte (Pre-Ticket)
 app.post("/api/nuevo-pre-ticket", express.json(), async (req, res) => {
@@ -238,7 +236,6 @@ app.get("/api/solicitudes", (req, res) => {
   }
 });
 
-
 app.listen(5000, () =>
   console.log("🌐 Servidor web keep-alive corriendo en puerto 5000")
 );
@@ -271,16 +268,15 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.DirectMessages   // ✅ NECESARIO PARA LEER DMs
+    GatewayIntentBits.DirectMessages, // ✅ NECESARIO PARA LEER DMs
   ],
   partials: [
     "MESSAGE",
     "CHANNEL",
     "REACTION",
-    "USER"                               // ✅ para DM del usuario
+    "USER", // ✅ para DM del usuario
   ],
 });
-
 
 // ======== REACCIONES A PRE-TICKET ========
 client.on("messageReactionAdd", async (reaction, user) => {
@@ -668,6 +664,7 @@ client.once("clientReady", async () => {
     .setTitle("💼 Comprar un Plan de Soporte")
     .setDescription(
       "Elegí uno de nuestros planes para acceder a soporte técnico prioritario.\n\n" +
+        "📙 **Plan Standart:** Hasta 10 equipos.\n" +
         "📘 **Plan Exclusivo:** Hasta 25 equipos.\n" +
         "📗 **Plan Premium:** Hasta 40 equipos.\n\n" +
         "Presioná el botón **Solicitar Plan** para comenzar."
@@ -676,9 +673,9 @@ client.once("clientReady", async () => {
 
   const botonPlan = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId("abrir_formulario_plan")
       .setLabel("💼 Solicitar Plan")
-      .setStyle(ButtonStyle.Success)
+      .setStyle(ButtonStyle.Link)
+      .setURL("https://technolokia.up.railway.app/contac.html?tipo=plan")
   );
 
   await canalBienvenida.send({
