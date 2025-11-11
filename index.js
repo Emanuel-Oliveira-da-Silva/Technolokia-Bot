@@ -497,7 +497,6 @@ client.on("interactionCreate", async (interaction) => {
     );
 
     await interaction.showModal(modal);
-    return;
   }
 
   if (
