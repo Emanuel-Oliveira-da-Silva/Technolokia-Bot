@@ -229,6 +229,16 @@ app.post("/request", async (req, res) => {
   }
 });
 
+// ✅ Exponer solicitudes.json públicamente para la web
+app.get("/api/solicitudes", (req, res) => {
+  try {
+    return res.json(solicitudes);
+  } catch {
+    return res.status(500).json({});
+  }
+});
+
+
 app.listen(5000, () =>
   console.log("🌐 Servidor web keep-alive corriendo en puerto 5000")
 );
