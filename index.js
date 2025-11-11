@@ -271,9 +271,16 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages   // ✅ NECESARIO PARA LEER DMs
   ],
-  partials: ["MESSAGE", "CHANNEL", "REACTION"],
+  partials: [
+    "MESSAGE",
+    "CHANNEL",
+    "REACTION",
+    "USER"                               // ✅ para DM del usuario
+  ],
 });
+
 
 // ======== REACCIONES A PRE-TICKET ========
 client.on("messageReactionAdd", async (reaction, user) => {
