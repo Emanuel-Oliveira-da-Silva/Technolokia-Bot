@@ -606,7 +606,6 @@ await msg.react("4️⃣");
       content: "✅ Solicitud enviada correctamente.",
       ephemeral: true,
     });
-    return;
   }
 
   if (interaction.isChatInputCommand()) {
