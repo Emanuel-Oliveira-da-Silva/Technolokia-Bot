@@ -36,6 +36,98 @@ const CONTRATACION_CHANNEL_ID = "1427368777095450775"; // 👈 NUEVO canal de #t
 // ======== SERVIDOR KEEP-ALIVE ========
 const app = express();
 app.get("/", (req, res) => res.send("✅ Bot Technolókia activo 24/7"));
+app.use(express.json());
+
+// ===== NUEVO ENDPOINT PARA FORMULARIOS DESDE LA WEB =====
+app.post("/request", async (req, res) => {
+  const { tipo, plan, equipos, descripcion, tecnicoPreferido } = req.body;
+
+  // 🔹 ACÁ SE SUPONE QUE YA TENÉS TU SISTEMA DE LOGIN
+  // Cambiá estas líneas para obtener datos reales:
+  const empresaLogueada = "Cherry SRL"; // ← Reemplazar
+  const emailLogueado = "SHAW@ejemplo.com"; // ← Reemplazar
+  const planActual = "Exclusive"; // ← Solo se usa en soporte técnico
+
+  const fechaUnix = Math.floor(Date.now() / 1000);
+
+  try {
+    if (tipo === "plan") {
+      // ===== VALIDACIONES =====
+      const limites = {
+        Standart: 10,
+        Exclusive: 25,
+        Premium: 50,
+      };
+
+      if (!limites[plan]) {
+        return res.status(400).json({ error: "PLAN_INVALIDO" });
+      }
+
+      if (equipos < 1 || equipos > limites[plan]) {
+        return res.status(400).json({ error: "EQUIPOS_INVALIDO" });
+      }
+
+      // ===== ENVIAR TICKET DE CONTRATACIÓN =====
+      const canal = await client.channels.fetch(CONTRATACION_CHANNEL_ID);
+
+      const embed = new EmbedBuilder()
+        .setColor(0x00ff99)
+        .setTitle("🆕 Nueva Solicitud de Plan")
+        .addFields(
+          { name: "🏢 Empresa", value: empresaLogueada },
+          { name: "💼 Tipo de Plan", value: plan },
+          { name: "🖥️ Equipos", value: equipos.toString() },
+          { name: "📞 Contacto", value: emailLogueado },
+          { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
+        );
+
+      await canal.send({
+        content: `<@&${FINANZAS_ROLE_ID}>`,
+        embeds: [embed],
+      });
+
+      return res.json({ ok: true });
+    }
+
+    if (tipo === "soporte") {
+      // ===== VALIDACIÓN =====
+      if (!descripcion.trim()) {
+        return res.status(400).json({ error: "SIN_DESCRIPCION" });
+      }
+
+      const canal = await client.channels.fetch(PRE_TICKET_CHANNEL_ID);
+
+      const embed = new EmbedBuilder()
+        .setColor(0x2b6de0)
+        .setTitle("🧾 Nuevo Pre-Ticket de Soporte")
+        .addFields(
+          { name: "🏢 Cliente", value: empresaLogueada },
+          { name: "📞 Contacto", value: emailLogueado },
+          { name: "⚙️ Problema", value: descripcion },
+          { name: "👨‍🔧 Técnico preferido", value: tecnicoPreferido || "Ninguno" },
+          { name: "📋 Plan", value: planActual },
+          { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
+        );
+
+      const msg = await canal.send({
+        content: `<@&${SERVICIO_TECNICO_ROLE_ID}>`,
+        embeds: [embed]
+      });
+
+      await msg.react("1️⃣");
+      await msg.react("2️⃣");
+      await msg.react("3️⃣");
+      await msg.react("4️⃣");
+
+      return res.json({ ok: true });
+    }
+
+    res.status(400).json({ error: "TIPO_INVALIDO" });
+  } catch (e) {
+    console.error("❌ Error al procesar la solicitud:", e);
+    res.status(500).json({ error: "SERVER_ERROR" });
+  }
+});
 app.listen(5000, () =>
   console.log("🌐 Servidor web keep-alive corriendo en puerto 5000")
 );
