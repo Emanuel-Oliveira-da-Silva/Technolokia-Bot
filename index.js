@@ -12,6 +12,7 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  MessageFlags,
 } from "discord.js";
 import fs from "fs";
 import express from "express";
@@ -484,7 +485,7 @@ await msg.react("4️⃣");
 
     await interaction.reply({
       content: "✅ Tu pre-ticket fue enviado correctamente.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -558,7 +559,7 @@ await msg.react("4️⃣");
 
     await interaction.reply({
       content: "✅ Solicitud enviada correctamente.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -577,7 +578,7 @@ await msg.react("4️⃣");
       if (!hasRole(FINANZAS_ROLE_ID)) {
         return interaction.reply({
           content: "❌ Solo Finanzas puede usar este comando.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -587,14 +588,14 @@ await msg.react("4️⃣");
       fs.writeFileSync(MOVIMIENTOS_FILE, JSON.stringify(movimientos, null, 2));
       await interaction.reply({
         content: `💰 Ingreso registrado: **$${monto}** — ${obs}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
     if (interaction.commandName === "sueldo") {
       if (!hasRole(FINANZAS_ROLE_ID)) {
         return interaction.reply({
           content: "❌ Solo Finanzas puede usar este comando.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -741,7 +742,7 @@ await msg.react("4️⃣");
       if (!hasRole(FINANZAS_ROLE_ID)) {
         return interaction.reply({
           content: "❌ Solo Finanzas puede usar este comando.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -751,7 +752,7 @@ await msg.react("4️⃣");
       fs.writeFileSync(MOVIMIENTOS_FILE, JSON.stringify(movimientos, null, 2));
       await interaction.reply({
         content: `💸 Gasto registrado: **$${monto}** — ${obs}`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -759,7 +760,7 @@ await msg.react("4️⃣");
       if (!hasRole(FINANZAS_ROLE_ID)) {
         return interaction.reply({
           content: "❌ Solo Finanzas puede usar este comando.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -803,7 +804,7 @@ await msg.react("4️⃣");
       if (!hasRole(SERVICIO_TECNICO_ROLE_ID)) {
         return interaction.reply({
           content: "❌ Solo Servicio Técnico puede usar este comando.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -848,7 +849,7 @@ await msg.react("4️⃣");
 
       await interaction.reply({
         content: `✅ Ticket **${ticketID}** creado correctamente.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -856,7 +857,7 @@ await msg.react("4️⃣");
       if (!hasRole(SERVICIO_TECNICO_ROLE_ID)) {
         return interaction.reply({
           content: "❌ Solo Servicio Técnico puede usar este comando.",
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -867,7 +868,7 @@ await msg.react("4️⃣");
       if (!ticketsData[codTicket]) {
         return interaction.reply({
           content: `❌ El ticket **${codTicket}** no existe.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
 
@@ -890,7 +891,7 @@ await msg.react("4️⃣");
 
       await interaction.reply({
         content: `✅ Reporte registrado para **${codTicket}**.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   }
