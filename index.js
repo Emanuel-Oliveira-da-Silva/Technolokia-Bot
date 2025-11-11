@@ -18,6 +18,12 @@ import fs from "fs";
 import express from "express";
 import cron from "node-cron";
 import cors from "cors";
+import fs from "fs";
+
+let solicitudes = {};
+if (fs.existsSync("solicitudes.json")) {
+  solicitudes = JSON.parse(fs.readFileSync("solicitudes.json", "utf8"));
+}
 
 // ======== CONFIGURACIÓN ========
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -65,9 +71,20 @@ app.post("/api/nueva-solicitud-plan", express.json(), async (req, res) => {
       content: `<@&${FINANZAS_ROLE_ID}>`,
       embeds: [embed],
     });
+    await msg.react("✅");
+    await msg.react("❌");
+
+    solicitudes[msg.id] = {
+      empresa,
+      email,
+      plan,
+      equipos,
+      estado: "pendiente",
+    };
+
+    fs.writeFileSync("solicitudes.json", JSON.stringify(solicitudes, null, 2));
 
     return res.json({ success: true });
-
   } catch (err) {
     console.error("❌ Error procesando la solicitud:", err);
     return res.status(500).json({ success: false, message: "Error interno" });
@@ -105,19 +122,15 @@ app.post("/api/nuevo-pre-ticket", express.json(), async (req, res) => {
     await msg.react("4️⃣");
 
     return res.json({ success: true });
-
   } catch (err) {
     console.error("❌ Error procesando pre-ticket:", err);
     return res.status(500).json({ success: false });
   }
 });
 
-
 app.use(express.json());
 
 app.use(cors());
-
-
 
 // ===== NUEVO ENDPOINT PARA FORMULARIOS DESDE LA WEB =====
 app.post("/request", async (req, res) => {
@@ -185,14 +198,17 @@ app.post("/request", async (req, res) => {
           { name: "🏢 Cliente", value: empresaLogueada },
           { name: "📞 Contacto", value: emailLogueado },
           { name: "⚙️ Problema", value: descripcion },
-          { name: "👨‍🔧 Técnico preferido", value: tecnicoPreferido || "Ninguno" },
+          {
+            name: "👨‍🔧 Técnico preferido",
+            value: tecnicoPreferido || "Ninguno",
+          },
           { name: "📋 Plan", value: planActual },
           { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
         );
 
       const msg = await canal.send({
         content: `<@&${SERVICIO_TECNICO_ROLE_ID}>`,
-        embeds: [embed]
+        embeds: [embed],
       });
 
       await msg.react("1️⃣");
@@ -209,7 +225,6 @@ app.post("/request", async (req, res) => {
     res.status(500).json({ error: "SERVER_ERROR" });
   }
 });
-
 
 app.listen(5000, () =>
   console.log("🌐 Servidor web keep-alive corriendo en puerto 5000")
@@ -262,14 +277,20 @@ client.on("messageReactionAdd", async (reaction, user) => {
   if (!embed) return;
 
   // Obtener datos del pre-ticket
-  const cliente = embed.fields.find(f => f.name === "🏢 Cliente")?.value;
-  const contacto = embed.fields.find(f => f.name === "📞 Contacto")?.value;
-  const problema = embed.fields.find(f => f.name === "⚙️ Problema")?.value;
-  const tecnicoPreferido = embed.fields.find(f => f.name === "👨‍🔧 Técnico preferido")?.value;
-  const codPlan = embed.fields.find(f => f.name === "📋 Plan")?.value || "Sin plan"; // si querés podés ajustar luego
+  const cliente = embed.fields.find((f) => f.name === "🏢 Cliente")?.value;
+  const contacto = embed.fields.find((f) => f.name === "📞 Contacto")?.value;
+  const problema = embed.fields.find((f) => f.name === "⚙️ Problema")?.value;
+  const tecnicoPreferido = embed.fields.find(
+    (f) => f.name === "👨‍🔧 Técnico preferido"
+  )?.value;
+  const codPlan =
+    embed.fields.find((f) => f.name === "📋 Plan")?.value || "Sin plan"; // si querés podés ajustar luego
 
   // Técnico asignado = técnico preferido si existe, sino usuario que reaccionó
-  const tecnicoAsignado = (tecnicoPreferido && tecnicoPreferido !== "Ninguno") ? tecnicoPreferido : `<@${user.id}>`;
+  const tecnicoAsignado =
+    tecnicoPreferido && tecnicoPreferido !== "Ninguno"
+      ? tecnicoPreferido
+      : `<@${user.id}>`;
 
   // Valor del grado según la reacción
   const emoji = reaction.emoji.name;
@@ -277,12 +298,12 @@ client.on("messageReactionAdd", async (reaction, user) => {
     "1️⃣": "1",
     "2️⃣": "2",
     "3️⃣": "3",
-    "4️⃣": "4"
+    "4️⃣": "4",
   };
   const grado = grados[emoji];
   if (!grado) return;
 
-    // Crear ID del ticket
+  // Crear ID del ticket
   const fechaUnix = Math.floor(Date.now() / 1000);
   const ticketID = `TEC-${String(ticketCounter).padStart(4, "0")}`;
   ticketCounter++;
@@ -318,13 +339,65 @@ client.on("messageReactionAdd", async (reaction, user) => {
   const canalTickets = await client.channels.fetch(TICKET_CHANNEL_ID);
   await canalTickets.send({
     content: `<@&${SERVICIO_TECNICO_ROLE_ID}>`, // 🔹 Mención agregada
-    embeds: [ticketEmbed]
+    embeds: [ticketEmbed],
   });
 
   // Borrar el pre-ticket original
   await reaction.message.delete();
 });
 
+//========= Reacciones a solicitudes de plan ========
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (user.bot) return;
+  if (reaction.partial) await reaction.fetch();
+  if (!solicitudes[reaction.message.id]) return; // No es una solicitud de plan
+
+  // Solo FINANZAS puede aprobar/rechazar
+  const member = await reaction.message.guild.members.fetch(user.id);
+  if (!member.roles.cache.has(FINANZAS_ROLE_ID)) return;
+
+  const solicitud = solicitudes[reaction.message.id];
+
+  // ✅ ACEPTAR
+  if (reaction.emoji.name === "✅") {
+    // Guardamos el plan en el usuario del sitio
+    // Necesitamos escribirlo en localStorage remoto === lo enviaremos a la página mediante la API
+    try {
+      await fetch("https://technolokia.up.railway.app/api/agregar-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(solicitud),
+      });
+    } catch (err) {}
+
+    solicitud.estado = "aprobado";
+    fs.writeFileSync("solicitudes.json", JSON.stringify(solicitudes, null, 2));
+
+    await reaction.message.reply(`✅ **Solicitud aprobada** por <@${user.id}>`);
+    return;
+  }
+
+  // ❌ RECHAZAR
+  if (reaction.emoji.name === "❌") {
+    const dm = await user.send(
+      "✏️ Escribí la **razón del rechazo** y envíamela acá:"
+    );
+    const collector = dm.channel.createMessageCollector({
+      max: 1,
+      time: 300000,
+    });
+
+    collector.on("collect", (m) => {
+      solicitud.estado = "rechazado";
+      solicitud.razon = m.content;
+      fs.writeFileSync(
+        "solicitudes.json",
+        JSON.stringify(solicitudes, null, 2)
+      );
+      reaction.message.reply(`❌ Solicitud rechazada por <@${user.id}>`);
+    });
+  }
+});
 
 // ======== COMANDOS ========
 const commands = [
@@ -529,7 +602,9 @@ const commands = [
 ].map((c) => c.toJSON());
 
 if (!TOKEN) {
-  console.error("❌ Error: DISCORD_BOT_TOKEN no está configurado en las variables de entorno");
+  console.error(
+    "❌ Error: DISCORD_BOT_TOKEN no está configurado en las variables de entorno"
+  );
   process.exit(1);
 }
 
@@ -538,7 +613,7 @@ client.once("clientReady", async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
 
   const rest = new REST({ version: "10" }).setToken(TOKEN);
-  
+
   try {
     await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
       body: commands,
@@ -651,8 +726,10 @@ client.on("interactionCreate", async (interaction) => {
     const cliente = interaction.fields.getTextInputValue("cliente");
     const contacto = interaction.fields.getTextInputValue("contacto");
     const problema = interaction.fields.getTextInputValue("problema");
-    const tecnicoPreferido = interaction.fields.getTextInputValue("tecnicoPreferido") || "";
-    const tipoPlan = interaction.fields.getTextInputValue("tipoPlan") || "Sin plan";
+    const tecnicoPreferido =
+      interaction.fields.getTextInputValue("tecnicoPreferido") || "";
+    const tipoPlan =
+      interaction.fields.getTextInputValue("tipoPlan") || "Sin plan";
     const fechaUnix = Math.floor(Date.now() / 1000);
 
     const embed = new EmbedBuilder()
@@ -669,13 +746,12 @@ client.on("interactionCreate", async (interaction) => {
       .setFooter({ text: "Technolókia SRL — Sistema de Soporte" });
 
     const canal = await client.channels.fetch(PRE_TICKET_CHANNEL_ID);
-const msg = await canal.send({ embeds: [embed] });
+    const msg = await canal.send({ embeds: [embed] });
 
-await msg.react("1️⃣");
-await msg.react("2️⃣");
-await msg.react("3️⃣");
-await msg.react("4️⃣");
-
+    await msg.react("1️⃣");
+    await msg.react("2️⃣");
+    await msg.react("3️⃣");
+    await msg.react("4️⃣");
 
     await interaction.reply({
       content: "✅ Tu pre-ticket fue enviado correctamente.",
@@ -1113,9 +1189,11 @@ cron.schedule("0 10 * * 3", async () => {
 
   await channel.send({ embeds: [embed] });
 
-  const archiveFile = `movimientos_${new Date().toISOString().split('T')[0]}.json`;
+  const archiveFile = `movimientos_${
+    new Date().toISOString().split("T")[0]
+  }.json`;
   fs.writeFileSync(archiveFile, JSON.stringify(movimientos, null, 2));
-  
+
   movimientos = [];
   fs.writeFileSync(MOVIMIENTOS_FILE, JSON.stringify(movimientos));
 });
