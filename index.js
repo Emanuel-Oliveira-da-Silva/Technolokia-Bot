@@ -572,7 +572,6 @@ await msg.react("4️⃣");
     );
 
     await interaction.showModal(modal);
-    return;
   }
 
   if (
