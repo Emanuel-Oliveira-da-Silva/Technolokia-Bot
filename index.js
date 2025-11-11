@@ -115,11 +115,8 @@ app.post("/api/nuevo-pre-ticket", express.json(), async (req, res) => {
 
 app.use(express.json());
 
-app.use(cors({
-  origin: ["https://technolokia.up.railway.app", "*"],
-  methods: ["GET", "POST"],
-  allowedHeaders: ["Content-Type"]
-}));
+app.use(cors());
+
 
 
 // ===== NUEVO ENDPOINT PARA FORMULARIOS DESDE LA WEB =====
