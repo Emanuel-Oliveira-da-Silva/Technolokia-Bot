@@ -339,6 +339,84 @@ client.once("clientReady", async () => {
 
 // ======== INTERACCIONES ========
 client.on("interactionCreate", async (interaction) => {
+  
+  // ======== REACCIONES A PRE-TICKET ========
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (user.bot) return; // ignorar bots
+
+  // Asegurar datos completos
+  if (reaction.partial) await reaction.fetch();
+  if (reaction.message.partial) await reaction.message.fetch();
+
+  // Sólo escuchar en el canal de pre-tickets
+  if (reaction.message.channel.id !== PRE_TICKET_CHANNEL_ID) return;
+
+  const embed = reaction.message.embeds[0];
+  if (!embed) return;
+
+  // Obtener datos del pre-ticket
+  const cliente = embed.fields.find(f => f.name === "🏢 Cliente")?.value;
+  const contacto = embed.fields.find(f => f.name === "📞 Contacto")?.value;
+  const problema = embed.fields.find(f => f.name === "⚙️ Problema")?.value;
+  const codPlan = "Sin plan"; // si querés podés ajustar luego
+
+  // Técnico asignado = usuario que reaccionó
+  const tecnicoAsignado = `<@${user.id}>`;
+
+  // Valor del grado según la reacción
+  const emoji = reaction.emoji.name;
+  const grados = {
+    "1️⃣": "1",
+    "2️⃣": "2",
+    "3️⃣": "3",
+    "4️⃣": "4"
+  };
+  const grado = grados[emoji];
+  if (!grado) return;
+
+  // Crear ID del ticket
+  const fechaUnix = Math.floor(Date.now() / 1000);
+  const ticketID = `TEC-${String(ticketCounter).padStart(4, "0")}`;
+  ticketCounter++;
+  fs.writeFileSync(COUNTER_FILE, ticketCounter.toString());
+
+  // Guardar datos del ticket
+  ticketsData[ticketID] = {
+    cliente,
+    codPlan,
+    grado,
+    contacto,
+    tecnico: tecnicoAsignado,
+    problema,
+    fechaUnix,
+  };
+  fs.writeFileSync("tickets.json", JSON.stringify(ticketsData, null, 2));
+
+  // Crear embed final
+  const ticketEmbed = new EmbedBuilder()
+    .setColor(0x00aeff)
+    .setTitle(`🎫 Ticket #${ticketID}`)
+    .addFields(
+      { name: "🏢 Cliente", value: cliente },
+      { name: "📋 Plan", value: codPlan },
+      { name: "🔴 Grado", value: grado },
+      { name: "📞 Contacto", value: contacto },
+      { name: "👨‍🔧 Técnico", value: tecnicoAsignado },
+      { name: "⚙️ Problema", value: problema },
+      { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
+    )
+    .setFooter({ text: "Technolókia SRL — Sistema de Tickets" });
+
+  const canalTickets = await client.channels.fetch(TICKET_CHANNEL_ID);
+  await canalTickets.send({
+    content: `<@&${SERVICIO_TECNICO_ROLE_ID}>`, // 🔹 Mención agregada
+    embeds: [ticketEmbed]
+  });
+
+  // Borrar el pre-ticket
+  await reaction.message.delete();
+});
+
   // === FORMULARIO DE PRE-TICKET ===
   if (
     interaction.isButton() &&
