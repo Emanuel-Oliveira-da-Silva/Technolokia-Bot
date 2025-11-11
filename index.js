@@ -91,7 +91,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
   const contacto = embed.fields.find(f => f.name === "📞 Contacto")?.value;
   const problema = embed.fields.find(f => f.name === "⚙️ Problema")?.value;
   const tecnicoPreferido = embed.fields.find(f => f.name === "👨‍🔧 Técnico preferido")?.value;
-  const codPlan = "Sin plan"; // si querés podés ajustar luego
+  const codPlan = embed.fields.find(f => f.name === "📋 Plan")?.value || "Sin plan"; // si querés podés ajustar luego
 
   // Técnico asignado = técnico preferido si existe, sino usuario que reaccionó
   const tecnicoAsignado = (tecnicoPreferido && tecnicoPreferido !== "Ninguno") ? tecnicoPreferido : `<@${user.id}>`;
@@ -452,11 +452,18 @@ client.on("interactionCreate", async (interaction) => {
       .setStyle(TextInputStyle.Short)
       .setRequired(false);
 
+    const tipoPlan = new TextInputBuilder()
+      .setCustomId("tipoPlan")
+      .setLabel("Tipo de Plan del cliente")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(false);
+
     modal.addComponents(
       new ActionRowBuilder().addComponents(cliente),
       new ActionRowBuilder().addComponents(contacto),
       new ActionRowBuilder().addComponents(problema),
-      new ActionRowBuilder().addComponents(tecnicoPreferido)
+      new ActionRowBuilder().addComponents(tecnicoPreferido),
+      new ActionRowBuilder().addComponents(tipoPlan)
     );
 
     await interaction.showModal(modal);
@@ -470,6 +477,7 @@ client.on("interactionCreate", async (interaction) => {
     const contacto = interaction.fields.getTextInputValue("contacto");
     const problema = interaction.fields.getTextInputValue("problema");
     const tecnicoPreferido = interaction.fields.getTextInputValue("tecnicoPreferido") || "";
+    const tipoPlan = interaction.fields.getTextInputValue("tipoPlan") || "Sin plan";
     const fechaUnix = Math.floor(Date.now() / 1000);
 
     const embed = new EmbedBuilder()
@@ -480,6 +488,7 @@ client.on("interactionCreate", async (interaction) => {
         { name: "📞 Contacto", value: contacto },
         { name: "⚙️ Problema", value: problema },
         { name: "👨‍🔧 Técnico preferido", value: tecnicoPreferido || "Ninguno" },
+        { name: "📋 Plan", value: tipoPlan },
         { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
       )
       .setFooter({ text: "Technolókia SRL — Sistema de Soporte" });
