@@ -23,6 +23,7 @@ const CLIENT_ID = process.env.DISCORD_CLIENT_ID || "1425719800297951252";
 const GUILD_ID = process.env.DISCORD_GUILD_ID || "1409967956808437822";
 
 const FINANZAS_ROLE_ID = "1411022714684182598";
+const BALANCE_SEMANAL_CHANNEL_ID = "1425691487089459291";
 const TICKET_CHANNEL_ID = "1425689943648501832";
 const REPORTE_CHANNEL_ID = "1425690652330430475";
 const PRE_TICKET_CHANNEL_ID = "1425908006339608706";
@@ -396,7 +397,13 @@ client.on("interactionCreate", async (interaction) => {
       .setFooter({ text: "Technolókia SRL — Sistema de Soporte" });
 
     const canal = await client.channels.fetch(PRE_TICKET_CHANNEL_ID);
-    await canal.send({ embeds: [embed] });
+const msg = await canal.send({ embeds: [embed] });
+
+await msg.react("1️⃣");
+await msg.react("2️⃣");
+await msg.react("3️⃣");
+await msg.react("4️⃣");
+
 
     await interaction.reply({
       content: "✅ Tu pre-ticket fue enviado correctamente.",
@@ -817,7 +824,7 @@ client.on("interactionCreate", async (interaction) => {
 
 // ======== CRON JOB SEMANAL (Miércoles 10:00 AM) ========
 cron.schedule("0 10 * * 3", async () => {
-  const channel = await client.channels.fetch(REPORTE_CHANNEL_ID);
+  const channel = await client.channels.fetch(BALANCE_SEMANAL_CHANNEL_ID);
   const ingresos = movimientos.filter((m) => m.tipo === "Ingreso");
   const gastos = movimientos.filter((m) => m.tipo === "Gasto");
   const totalI = ingresos.reduce((a, b) => a + b.monto, 0);
