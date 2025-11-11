@@ -71,6 +71,40 @@ const client = new Client({
   partials: ["MESSAGE", "CHANNEL", "REACTION"],
 });
 
+// ======== REACCIONES A PRE-TICKET ========
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (user.bot) return; // ignorar bots
+
+  // Asegurar datos completos
+  if (reaction.partial) await reaction.fetch();
+  if (reaction.message.partial) await reaction.message.fetch();
+
+  // Sólo escuchar en el canal de pre-tickets
+  if (reaction.message.channel.id !== PRE_TICKET_CHANNEL_ID) return;
+
+  const embed = reaction.message.embeds[0];
+  if (!embed) return;
+
+  // Obtener datos del pre-ticket
+  const cliente = embed.fields.find(f => f.name === "🏢 Cliente")?.value;
+  const contacto = embed.fields.find(f => f.name === "📞 Contacto")?.value;
+  const problema = embed.fields.find(f => f.name === "⚙️ Problema")?.value;
+  const codPlan = "Sin plan"; // si querés podés ajustar luego
+
+  // Técnico asignado = usuario que reaccionó
+  const tecnicoAsignado = `<@${user.id}>`;
+
+  // Valor del grado según la reacción
+  const emoji = reaction.emoji.name;
+  const grados = {
+    "1️⃣": "1",
+    "2️⃣": "2",
+    "3️⃣": "3",
+    "4️⃣": "4"
+  };
+  const grado = grados[emoji];
+  if (!grado) return;
+
 // ======== COMANDOS ========
 const commands = [
   new SlashCommandBuilder()
@@ -340,39 +374,7 @@ client.once("clientReady", async () => {
 // ======== INTERACCIONES ========
 client.on("interactionCreate", async (interaction) => {
   
-  // ======== REACCIONES A PRE-TICKET ========
-client.on("messageReactionAdd", async (reaction, user) => {
-  if (user.bot) return; // ignorar bots
-
-  // Asegurar datos completos
-  if (reaction.partial) await reaction.fetch();
-  if (reaction.message.partial) await reaction.message.fetch();
-
-  // Sólo escuchar en el canal de pre-tickets
-  if (reaction.message.channel.id !== PRE_TICKET_CHANNEL_ID) return;
-
-  const embed = reaction.message.embeds[0];
-  if (!embed) return;
-
-  // Obtener datos del pre-ticket
-  const cliente = embed.fields.find(f => f.name === "🏢 Cliente")?.value;
-  const contacto = embed.fields.find(f => f.name === "📞 Contacto")?.value;
-  const problema = embed.fields.find(f => f.name === "⚙️ Problema")?.value;
-  const codPlan = "Sin plan"; // si querés podés ajustar luego
-
-  // Técnico asignado = usuario que reaccionó
-  const tecnicoAsignado = `<@${user.id}>`;
-
-  // Valor del grado según la reacción
-  const emoji = reaction.emoji.name;
-  const grados = {
-    "1️⃣": "1",
-    "2️⃣": "2",
-    "3️⃣": "3",
-    "4️⃣": "4"
-  };
-  const grado = grados[emoji];
-  if (!grado) return;
+  
 
   // Crear ID del ticket
   const fechaUnix = Math.floor(Date.now() / 1000);
