@@ -417,52 +417,6 @@ client.once("clientReady", async () => {
 
 // ======== INTERACCIONES ========
 client.on("interactionCreate", async (interaction) => {
-  
-  
-
-  // Crear ID del ticket
-  const fechaUnix = Math.floor(Date.now() / 1000);
-  const ticketID = `TEC-${String(ticketCounter).padStart(4, "0")}`;
-  ticketCounter++;
-  fs.writeFileSync(COUNTER_FILE, ticketCounter.toString());
-
-  // Guardar datos del ticket
-  ticketsData[ticketID] = {
-    cliente,
-    codPlan,
-    grado,
-    contacto,
-    tecnico: tecnicoAsignado,
-    problema,
-    fechaUnix,
-  };
-  fs.writeFileSync("tickets.json", JSON.stringify(ticketsData, null, 2));
-
-  // Crear embed final
-  const ticketEmbed = new EmbedBuilder()
-    .setColor(0x00aeff)
-    .setTitle(`🎫 Ticket #${ticketID}`)
-    .addFields(
-      { name: "🏢 Cliente", value: cliente },
-      { name: "📋 Plan", value: codPlan },
-      { name: "🔴 Grado", value: grado },
-      { name: "📞 Contacto", value: contacto },
-      { name: "👨‍🔧 Técnico", value: tecnicoAsignado },
-      { name: "⚙️ Problema", value: problema },
-      { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
-    )
-    .setFooter({ text: "Technolókia SRL — Sistema de Tickets" });
-
-  const canalTickets = await client.channels.fetch(TICKET_CHANNEL_ID);
-  await canalTickets.send({
-    content: `<@&${SERVICIO_TECNICO_ROLE_ID}>`, // 🔹 Mención agregada
-    embeds: [ticketEmbed]
-  });
-
-  // Borrar el pre-ticket
-  await reaction.message.delete();
-});
-
   // === FORMULARIO DE PRE-TICKET ===
   if (
     interaction.isButton() &&
