@@ -13,6 +13,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   MessageFlags,
+  StringSelectMenuBuilder,
 } from "discord.js";
 import fs from "fs";
 import express from "express";
@@ -90,10 +91,11 @@ client.on("messageReactionAdd", async (reaction, user) => {
   const cliente = embed.fields.find(f => f.name === "🏢 Cliente")?.value;
   const contacto = embed.fields.find(f => f.name === "📞 Contacto")?.value;
   const problema = embed.fields.find(f => f.name === "⚙️ Problema")?.value;
-  const codPlan = "Sin plan"; // si querés podés ajustar luego
+  const tecnicoPreferido = embed.fields.find(f => f.name === "👨‍🔧 Técnico preferido")?.value;
+  const codPlan = embed.fields.find(f => f.name === "📋 Plan")?.value || "Sin plan";
 
-  // Técnico asignado = usuario que reaccionó
-  const tecnicoAsignado = `<@${user.id}>`;
+  // Técnico asignado = técnico preferido si existe, sino usuario que reaccionó
+  const tecnicoAsignado = (tecnicoPreferido && tecnicoPreferido !== "Ninguno") ? tecnicoPreferido : `<@${user.id}>`;
 
   // Valor del grado según la reacción
   const emoji = reaction.emoji.name;
@@ -423,6 +425,31 @@ client.on("interactionCreate", async (interaction) => {
     interaction.isButton() &&
     interaction.customId === "abrir_formulario_ticket"
   ) {
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId("seleccionar_plan_preticket")
+      .setPlaceholder("Selecciona el tipo de plan")
+      .addOptions(
+        { label: "Standart", value: "standart" },
+        { label: "Exclusive", value: "exclusive" },
+        { label: "Premium", value: "premium" }
+      );
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    await interaction.reply({
+      content: "📋 Selecciona el tipo de plan que deseas:",
+      components: [row],
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  // Manejador del select menu de plan
+  if (
+    interaction.isStringSelectMenu() &&
+    interaction.customId === "seleccionar_plan_preticket"
+  ) {
+    const planSeleccionado = interaction.values[0];
+
     const modal = new ModalBuilder()
       .setCustomId("formulario_ticket")
       .setTitle("Formulario de Pre-Ticket");
@@ -445,10 +472,27 @@ client.on("interactionCreate", async (interaction) => {
       .setStyle(TextInputStyle.Paragraph)
       .setRequired(true);
 
+    const tecnicoPreferido = new TextInputBuilder()
+      .setCustomId("tecnicoPreferido")
+      .setLabel("Técnico preferido (Dejar vacío si no tiene)")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(false);
+
+    // Guardar el plan en un campo oculto del modal
+    const planInput = new TextInputBuilder()
+      .setCustomId("plan_oculto")
+      .setLabel("Plan (no editar)")
+      .setStyle(TextInputStyle.Short)
+      .setValue(planSeleccionado)
+      .setRequired(true)
+      .setDisabled(true);
+
     modal.addComponents(
       new ActionRowBuilder().addComponents(cliente),
       new ActionRowBuilder().addComponents(contacto),
-      new ActionRowBuilder().addComponents(problema)
+      new ActionRowBuilder().addComponents(problema),
+      new ActionRowBuilder().addComponents(tecnicoPreferido),
+      new ActionRowBuilder().addComponents(planInput)
     );
 
     await interaction.showModal(modal);
@@ -461,15 +505,27 @@ client.on("interactionCreate", async (interaction) => {
     const cliente = interaction.fields.getTextInputValue("cliente");
     const contacto = interaction.fields.getTextInputValue("contacto");
     const problema = interaction.fields.getTextInputValue("problema");
+    const tecnicoPreferido = interaction.fields.getTextInputValue("tecnicoPreferido") || "";
+    const plan = interaction.fields.getTextInputValue("plan_oculto") || "Sin plan";
     const fechaUnix = Math.floor(Date.now() / 1000);
+
+    // Mapear valores de plan a nombres legibles
+    const planesMapa = {
+      "standart": "Standart",
+      "exclusive": "Exclusive",
+      "premium": "Premium"
+    };
+    const planNombre = planesMapa[plan] || plan;
 
     const embed = new EmbedBuilder()
       .setColor(0x2b6de0)
       .setTitle("🧾 Nuevo Pre-Ticket de Soporte")
       .addFields(
         { name: "🏢 Cliente", value: cliente },
+        { name: "📋 Plan", value: planNombre },
         { name: "📞 Contacto", value: contacto },
         { name: "⚙️ Problema", value: problema },
+        { name: "👨‍🔧 Técnico preferido", value: tecnicoPreferido || "Ninguno" },
         { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
       )
       .setFooter({ text: "Technolókia SRL — Sistema de Soporte" });
@@ -510,7 +566,7 @@ await msg.react("4️⃣");
       .setRequired(true);
     const tipoPlan = new TextInputBuilder()
       .setCustomId("tipoPlan")
-      .setLabel("Tipo de Plan (Exclusivo o Premium)")
+      .setLabel("Tipo de Plan (Standart, Exclusive o Premium)")
       .setStyle(TextInputStyle.Short)
       .setRequired(true);
     const equipos = new TextInputBuilder()
