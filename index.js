@@ -37,6 +37,82 @@ const CONTRATACION_CHANNEL_ID = "1427368777095450775"; // 👈 NUEVO canal de #t
 // ======== SERVIDOR KEEP-ALIVE ========
 const app = express();
 app.get("/", (req, res) => res.send("✅ Bot Technolókia activo 24/7"));
+
+// ✅ Para recibir solicitudes desde la página web
+app.post("/api/nueva-solicitud-plan", express.json(), async (req, res) => {
+  try {
+    const { empresa, email, plan, equipos } = req.body;
+    if (!empresa || !email || !plan || !equipos) {
+      return res.status(400).json({ success: false, message: "Faltan datos" });
+    }
+
+    const fechaUnix = Math.floor(Date.now() / 1000);
+
+    const embed = new EmbedBuilder()
+      .setColor(0x00ff99)
+      .setTitle("🆕 Nueva Solicitud de Plan")
+      .addFields(
+        { name: "🏢 Empresa", value: empresa },
+        { name: "💼 Tipo de Plan", value: plan },
+        { name: "🖥️ Equipos", value: equipos.toString() },
+        { name: "📞 Contacto", value: email },
+        { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
+      )
+      .setFooter({ text: "Technolókia SRL — Contrataciones" });
+
+    const canal = await client.channels.fetch(CONTRATACION_CHANNEL_ID);
+    await canal.send({
+      content: `<@&${FINANZAS_ROLE_ID}>`,
+      embeds: [embed],
+    });
+
+    return res.json({ success: true });
+
+  } catch (err) {
+    console.error("❌ Error procesando la solicitud:", err);
+    return res.status(500).json({ success: false, message: "Error interno" });
+  }
+});
+
+// ✅ Para solicitudes de soporte (Pre-Ticket)
+app.post("/api/nuevo-pre-ticket", express.json(), async (req, res) => {
+  try {
+    const { empresa, email, problema, tecnico, plan } = req.body;
+    if (!empresa || !email || !problema) {
+      return res.status(400).json({ success: false, message: "Faltan datos" });
+    }
+
+    const fechaUnix = Math.floor(Date.now() / 1000);
+
+    const embed = new EmbedBuilder()
+      .setColor(0x2b6de0)
+      .setTitle("🧾 Nuevo Pre-Ticket de Soporte")
+      .addFields(
+        { name: "🏢 Cliente", value: empresa },
+        { name: "📞 Contacto", value: email },
+        { name: "⚙️ Problema", value: problema },
+        { name: "👨‍🔧 Técnico preferido", value: tecnico || "Ninguno" },
+        { name: "📋 Plan", value: plan || "Sin plan" },
+        { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
+      );
+
+    const canal = await client.channels.fetch(PRE_TICKET_CHANNEL_ID);
+    const msg = await canal.send({ embeds: [embed] });
+
+    await msg.react("1️⃣");
+    await msg.react("2️⃣");
+    await msg.react("3️⃣");
+    await msg.react("4️⃣");
+
+    return res.json({ success: true });
+
+  } catch (err) {
+    console.error("❌ Error procesando pre-ticket:", err);
+    return res.status(500).json({ success: false });
+  }
+});
+
+
 app.use(express.json());
 
 app.use(cors({
