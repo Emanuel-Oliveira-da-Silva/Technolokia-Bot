@@ -532,7 +532,6 @@ await msg.react("4️⃣");
       content: "✅ Tu pre-ticket fue enviado correctamente.",
       ephemeral: true,
     });
-    return;
   }
 
   // === FORMULARIO DE PLAN ===
