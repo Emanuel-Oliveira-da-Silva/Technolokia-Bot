@@ -17,6 +17,7 @@ import {
 import fs from "fs";
 import express from "express";
 import cron from "node-cron";
+import cors from "cors";
 
 // ======== CONFIGURACIÓN ========
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -37,6 +38,12 @@ const CONTRATACION_CHANNEL_ID = "1427368777095450775"; // 👈 NUEVO canal de #t
 const app = express();
 app.get("/", (req, res) => res.send("✅ Bot Technolókia activo 24/7"));
 app.use(express.json());
+
+app.use(cors({
+  origin: ["https://technolokia.up.railway.app", "*"],
+  methods: ["GET", "POST"],
+}));
+
 
 // ===== NUEVO ENDPOINT PARA FORMULARIOS DESDE LA WEB =====
 app.post("/request", async (req, res) => {
@@ -128,6 +135,8 @@ app.post("/request", async (req, res) => {
     res.status(500).json({ error: "SERVER_ERROR" });
   }
 });
+
+
 app.listen(5000, () =>
   console.log("🌐 Servidor web keep-alive corriendo en puerto 5000")
 );
