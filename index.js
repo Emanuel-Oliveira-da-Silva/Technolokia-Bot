@@ -62,14 +62,16 @@ app.post("/api/nueva-solicitud-plan", express.json(), async (req, res) => {
         { name: "🖥️ Equipos", value: equipos.toString() },
         { name: "📞 Contacto", value: email },
         { name: "📅 Fecha", value: `<t:${fechaUnix}:f>` }
-      )
-      .setFooter({ text: "Technolókia SRL — Contrataciones" });
+      );
 
     const canal = await client.channels.fetch(CONTRATACION_CHANNEL_ID);
-    await canal.send({
+
+    // ✅ AQUÍ estaba el error
+    const msg = await canal.send({
       content: `<@&${FINANZAS_ROLE_ID}>`,
       embeds: [embed],
     });
+
     await msg.react("✅");
     await msg.react("❌");
 
@@ -84,11 +86,13 @@ app.post("/api/nueva-solicitud-plan", express.json(), async (req, res) => {
     fs.writeFileSync("solicitudes.json", JSON.stringify(solicitudes, null, 2));
 
     return res.json({ success: true });
+
   } catch (err) {
     console.error("❌ Error procesando la solicitud:", err);
     return res.status(500).json({ success: false, message: "Error interno" });
   }
 });
+
 
 // ✅ Para solicitudes de soporte (Pre-Ticket)
 app.post("/api/nuevo-pre-ticket", express.json(), async (req, res) => {
